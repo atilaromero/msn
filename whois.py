@@ -238,7 +238,7 @@ def whois(ip):
     if whois.whoiscache.has_key(ip):
         return whois.whoiscache[ip]
     n=NICClient()
-    if whois.lastexec and (datetime.datetime.now()-whois.lastexec)>datetime.timedelta(seconds=1):
+    if whois.lastexec and (datetime.datetime.now()-whois.lastexec)<datetime.timedelta(seconds=1):
         time.sleep(1) #avoid whois flood
     resp=n.whois_lookup({},ip,0).split('\n')
     whois.lastexec=datetime.datetime.now()
