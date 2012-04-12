@@ -87,6 +87,9 @@ def main():
         print "%s pcap1 pcap2 pcap3 ... "%sys.argv[0]
         sys.exit(1)
     exportips(sys.argv[1:])
+    sys.stderr.write('Press Enter')
+    sys.stderr.flush()
+    sys.stdin.read(1)
 
 if __name__=='__main__':
     main()
