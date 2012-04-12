@@ -1,10 +1,10 @@
 #!/usr/bin/python
 import os
+import sys
 import whois as whoispack
-from scapy.all import *
 import time
-import pure-pcapy
-from impacket import ImpactDecoder
+import pure_pcapy
+from impacket import ImpactDecoder, ImpactPacket
 
 whoiscache={}
 def whois(ip):
@@ -13,7 +13,7 @@ def whois(ip):
     n=whoispack.NICClient()
     resp=n.whois_lookup({},ip,0).split('\n')
     time.sleep(1)
-    lines=[x for x in resp if x.count('owner:')>0]
+    lines=[x for x in resp if x.lower().startswith('owner:')]
     s2=''
     if lines:
         s=lines[0]
@@ -26,12 +26,24 @@ def whois(ip):
     
     
 
-def listIPs2(infpath):
+def listIPs(infpath):
     result=[]
-    def f(h,p):
-        if hasattr(p,'load'):
-            if p.load.count('4vPI')>0 or p.load.count('IPv4')>0:
-                ls=p.load.split('\r\n')
+    linkdecoder=None
+    def f(h,rawp):
+        ipdecoder=ImpactDecoder.IPDecoder()
+        tcpdecoder=ImpactDecoder.TCPDecoder()
+        plink=linkdecoder.decode(rawp)
+        if plink.get_ether_type() == ImpactPacket.IP.ethertype:
+            pip=ipdecoder.decode(plink.get_data_as_string())
+            if pip.get_ip_p() == ImpactPacket.TCP.protocol:
+                ptcp=tcpdecoder.decode(pip.get_data_as_string())
+                if ptcp.get_th_dport() == 1863 or ptcp.get_th_sport() == 1863:
+                    load=ptcp.get_data_as_string()
+                    process(load,h)
+    def process(load,h):
+        if load:
+            if load.count('4vPI')>0 or load.count('IPv4')>0:
+                ls=load.split('\r\n')
                 ffrom=''
                 ip=''
                 for l in ls:
@@ -50,21 +62,29 @@ def listIPs2(infpath):
                                                ip.startswith('127.') or
                                                ip.startswith('10.') ):
                                     k=ip+'\t'+ffrom.strip(' ')
-                                    t=time.localtime(p.time)
+                                    t=time.localtime(h.ts[0]+h.ts[1]*0.000001)
                                     ts=time.strftime('%Y-%m-%d %X %Z',t)
                                     result.append(k+'\t'+ts+'\t'+whois(ip))
     def g(h,p):
         try:
             f(h,p)
+        except KeyboardInterrupt:
+          sys.exit(1)
         except:
+            print sys.exc_info()
             pass
-    try:
-        r=pure_pcapy.open_offline(infpath)
-    except:
-        return result
+    r=pure_pcapy.open_offline(infpath)
+    datalink=r.datalink()
+    if datalink == pure_pcapy.DLT_LINUX_SLL:
+        linkdecoder=ImpactDecoder.LinuxSLLDecoder()
+    elif datalink == pure_pcapy.DLT_EN10MB:
+        linkdecoder=ImpactDecoder.EthDecoder()
+    else:
+        raise Exception("Datalink type not supported: %i"%datalink)
     r.dispatch(-1,g)
     return result
 
+"""
 def listIPs(infpath):
     result=[]
     def f(p):
@@ -103,6 +123,7 @@ def listIPs(infpath):
         return result
     r.dispatch(g)
     return result
+"""
 
 def exportips(filelist):
     for x in filelist:
