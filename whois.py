@@ -34,6 +34,8 @@ THE SOFTWARE.
 import sys
 import socket
 import optparse
+import datetime
+import time
 #import pdb
 
 
@@ -228,10 +230,33 @@ def parse_command_line(argv):
         
     return (options, args)
     
+def whois(ip):
+    if not hasattr(whois,'whoiscache'):
+        whois.whoiscache={}
+    if not hasattr(whois,'lastexec'):
+        whois.lastexec=None
+    if whois.whoiscache.has_key(ip):
+        return whois.whoiscache[ip]
+    n=NICClient()
+    if whois.lastexec and (datetime.datetime.now()-whois.lastexec)>datetime.timedelta(seconds=1):
+        time.sleep(1) #avoid whois flood
+    resp=n.whois_lookup({},ip,0).split('\n')
+    whois.lastexec=datetime.datetime.now()
+    lines=[x for x in resp if x.lower().startswith('owner:')]
+    s2=''
+    if lines:
+        s=[x.split('owner:',1)[-1].strip() for x in lines]
+        s=[x for x in s if x]
+        if s:
+            s2=s[0]
+        whois.whoiscache[ip]=s2
+    return s2
+
 if __name__ == "__main__":
     flags = 0
     nic_client = NICClient()
     (options, args) = parse_command_line(sys.argv)
     if (options.b_quicklookup is True):
         flags = flags|NICClient.WHOIS_QUICK
-    print nic_client.whois_lookup(options.__dict__, args[1], flags)
+    #print nic_client.whois_lookup(options.__dict__, args[1], flags)
+    print whois(args[1])
