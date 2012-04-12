@@ -1,1 +1,6 @@
 warnipsmsn.txt
+*.spec
+*.log
+dist/
+build/
+*.pyc
