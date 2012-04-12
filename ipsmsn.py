@@ -4,22 +4,33 @@ import sys
 import whois
 import time
 import pure_pcapy
+import gre
 from impacket import ImpactDecoder, ImpactPacket
 
 def listIPs(infpath):
     result=[]
     linkdecoder=None
-    def f(h,rawp):
-        ipdecoder=ImpactDecoder.IPDecoder()
-        tcpdecoder=ImpactDecoder.TCPDecoder()
-        plink=linkdecoder.decode(rawp)
+    ipdecoder=ImpactDecoder.IPDecoder()
+    tcpdecoder=ImpactDecoder.TCPDecoder()
+    gredecoder=gre.GREDecoder()
+    def getTCP(plink):
         if plink.get_ether_type() == ImpactPacket.IP.ethertype:
             pip=ipdecoder.decode(plink.get_data_as_string())
             if pip.get_ip_p() == ImpactPacket.TCP.protocol:
                 ptcp=tcpdecoder.decode(pip.get_data_as_string())
-                if ptcp.get_th_dport() == 1863 or ptcp.get_th_sport() == 1863:
-                    load=ptcp.get_data_as_string()
-                    process(load,h)
+                return ptcp
+            elif pip.get_ip_p() == gre.GRE.protocol:
+                ptcp=getTCP(gredecoder.decode(pip.get_data_as_string()))
+                return ptcp
+        return None
+        
+    def f(h,rawp):
+        plink=linkdecoder.decode(rawp)
+        ptcp=getTCP(plink)
+        if ptcp:
+            if ptcp.get_th_dport() == 1863 or ptcp.get_th_sport() == 1863:
+                load=ptcp.get_data_as_string()
+                process(load,h)
     def process(load,h):
         if load:
             if load.count('4vPI')>0 or load.count('IPv4')>0:
