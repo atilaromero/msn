@@ -258,5 +258,5 @@ if __name__ == "__main__":
     (options, args) = parse_command_line(sys.argv)
     if (options.b_quicklookup is True):
         flags = flags|NICClient.WHOIS_QUICK
-    #print nic_client.whois_lookup(options.__dict__, args[1], flags)
-    print whois(args[1])
+    print nic_client.whois_lookup(options.__dict__, args[1], flags)
+    #print whois(args[1])
