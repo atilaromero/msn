@@ -55,7 +55,12 @@ def listIPs(infpath):
                                     k=ip+'\t'+ffrom.strip(' ')
                                     t=time.localtime(h.ts[0]+h.ts[1]*0.000001)
                                     ts=time.strftime('%Y-%m-%d %X %Z',t)
-                                    result.append(k+'\t'+ts+'\t'+whois.whois(ip))
+                                    owner=''
+                                    try:
+                                        owner=whois.whois(ip)
+                                    except:
+                                        pass
+                                    result.append(k+'\t'+ts+'\t'+owner)
     def g(h,p):
         try:
             f(h,p)
